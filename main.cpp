@@ -1,23 +1,83 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
+#include <iomanip>
+#include <limits>
 using namespace std;
 
 const int MAX = 100;
 
 // ============================================================
-// ABSTRACTION & POLYMORPHISM
+// ANSI COLOR CODES (Windows 10+ & VSCode Terminal Compatible)
+// ============================================================
+#define RESET     "\033[0m"
+#define BOLD      "\033[1m"
+#define RED       "\033[91m"
+#define GREEN     "\033[92m"
+#define YELLOW    "\033[93m"
+#define BLUE      "\033[94m"
+#define MAGENTA   "\033[95m"
+#define CYAN      "\033[96m"
+#define WHITE     "\033[97m"
+#define DIM       "\033[2m"
+
+// ============================================================
+// UTILITY: INPUT VALIDATION
+// ============================================================
+double inputAngka(const string& prompt) {
+    double nilai;
+    while (true) {
+        cout << prompt;
+        if (cin >> nilai && nilai >= 0) {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            return nilai;
+        }
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << RED << "  [!] Input tidak valid. Masukkan angka positif.\n" << RESET;
+    }
+}
+
+int inputMenu(const string& prompt, int min, int max) {
+    int nilai;
+    while (true) {
+        cout << prompt;
+        if (cin >> nilai && nilai >= min && nilai <= max) {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            return nilai;
+        }
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << RED << "  [!] Pilihan tidak valid. Masukkan " << min << "-" << max << ".\n" << RESET;
+    }
+}
+
+string inputTeks(const string& prompt) {
+    string teks;
+    cout << prompt;
+    getline(cin, teks);
+    while (teks.empty()) {
+        cout << RED << "  [!] Input tidak boleh kosong.\n" << RESET;
+        cout << prompt;
+        getline(cin, teks);
+    }
+    return teks;
+}
+
+// ============================================================
+// ABSTRACTION (Pure Virtual / Interface)
 // ============================================================
 class Rekening {
 public:
-    virtual void tampilkanInfo() const = 0;
-    virtual string getTipe() const = 0;
-    virtual bool tarik(double jumlah) = 0;
+    virtual void    tampilkanInfo()    const = 0;
+    virtual string  getTipe()          const = 0;
+    virtual bool    tarik(double jml)        = 0;
+    virtual bool    setor(double jml)        = 0;   // <-- setor masuk abstraction
     virtual ~Rekening() {}
 };
 
 // ============================================================
-// CLASS & OBJECT + ENCAPSULATION + INHERITANCE
+// CLASS Nasabah : ENCAPSULATION + INHERITANCE + POLYMORPHISM
 // ============================================================
 class Nasabah : public Rekening {
 protected:
@@ -26,47 +86,53 @@ protected:
 
 public:
     // CONSTRUCTOR
-    Nasabah(string nama, string spesies, string noRek, double saldo)
+    Nasabah(const string& nama, const string& spesies,
+            const string& noRek, double saldo)
         : nama(nama), spesies(spesies), noRek(noRek), saldo(saldo) {}
 
     // DESTRUCTOR
-    ~Nasabah() {}
+    virtual ~Nasabah() {}
 
-    // ENCAPSULATION (Getters)
+    // ENCAPSULATION - Getters
     string getNama()    const { return nama; }
     string getNoRek()   const { return noRek; }
-    double getSaldo()   const { return saldo; }
     string getSpesies() const { return spesies; }
+    double getSaldo()   const { return saldo; }
 
-    // SETOR SALDO
-    bool setor(double jumlah) {
+    // SETOR (dari abstraction)
+    bool setor(double jumlah) override {
         if (jumlah <= 0) return false;
         saldo += jumlah;
         return true;
     }
 
-    // TARIK SALDO
-    virtual bool tarik(double jumlah) override {
+    // TARIK
+    bool tarik(double jumlah) override {
         if (jumlah <= 0 || jumlah > saldo) return false;
         saldo -= jumlah;
         return true;
     }
 
-    // CEK DATA NASABAH
+    // TAMPILKAN INFO
     void tampilkanInfo() const override {
-        cout << "  -------------------------------------------\n";
-        cout << "  Nama Nasabah : " << nama    << "\n"
-            << "  Spesies Laut : " << spesies << "\n"
-            << "  No. Rekening : " << noRek   << "\n"
-            << "  Tipe Akun    : " << getTipe() << "\n"
-            << "  Total Saldo  : " << saldo   << " Koin\n";
-        cout << "  -------------------------------------------\n";
+        cout << "\n";
+        cout << CYAN  << "  +-----------------------------------------------+\n" << RESET;
+        cout << CYAN  << "  |" << BOLD << YELLOW << "        INFORMASI NASABAH REGULER              " << CYAN << "|\n" << RESET;
+        cout << CYAN  << "  +-----------------------------------------------+\n" << RESET;
+        cout << CYAN  << "  |" << RESET << " Nama Nasabah : " << GREEN  << left << setw(30) << nama    << CYAN << "|\n" << RESET;
+        cout << CYAN  << "  |" << RESET << " Spesies Laut : " << WHITE  << left << setw(30) << spesies << CYAN << "|\n" << RESET;
+        cout << CYAN  << "  |" << RESET << " No. Rekening : " << YELLOW << left << setw(30) << noRek   << CYAN << "|\n" << RESET;
+        cout << CYAN  << "  |" << RESET << " Tipe Akun    : " << BLUE   << left << setw(30) << getTipe()<< CYAN << "|\n" << RESET;
+        cout << CYAN  << "  |" << RESET << " Saldo        : " << BOLD   << GREEN
+             << left << setw(24) << fixed << setprecision(2) << saldo << " Koin" << RESET << CYAN << "|\n" << RESET;
+        cout << CYAN  << "  +-----------------------------------------------+\n" << RESET;
     }
 
     string getTipe() const override { return "Reguler"; }
 
     // OPERATOR OVERLOADING
     bool operator>(const Nasabah& o) const { return saldo > o.saldo; }
+
     friend ostream& operator<<(ostream& os, const Nasabah& n) {
         os << "[" << n.getTipe() << "] " << n.nama << " | " << n.noRek;
         return os;
@@ -74,23 +140,40 @@ public:
 };
 
 // ============================================================
-// INHERITANCE - NasabahVIP
+// CLASS NasabahVIP : INHERITANCE + POLYMORPHISM
 // ============================================================
 class NasabahVIP : public Nasabah {
     double limitKredit;
 public:
-    NasabahVIP(string nama, string spesies, string noRek, double saldo, double limit = 1000)
+    NasabahVIP(const string& nama, const string& spesies,
+               const string& noRek, double saldo, double limit = 1000.0)
         : Nasabah(nama, spesies, noRek, saldo), limitKredit(limit) {}
 
-    // POLYMORPHISM - VIP bisa tarik sampai limit kredit
+    // POLYMORPHISM - VIP bisa tarik hingga limit kredit
     bool tarik(double jumlah) override {
         if (jumlah <= 0 || jumlah > (saldo + limitKredit)) return false;
         saldo -= jumlah;
         return true;
     }
 
-    string getTipe() const override { return "VIP"; }
-    double getLimitKredit() const { return limitKredit; }
+    void tampilkanInfo() const override {
+        cout << "\n";
+        cout << MAGENTA << "  +-----------------------------------------------+\n" << RESET;
+        cout << MAGENTA << "  |" << BOLD << YELLOW << "       INFORMASI NASABAH VIP [BINTANG]         " << MAGENTA << "|\n" << RESET;
+        cout << MAGENTA << "  +-----------------------------------------------+\n" << RESET;
+        cout << MAGENTA << "  |" << RESET << " Nama Nasabah : " << GREEN   << left << setw(30) << nama       << MAGENTA << "|\n" << RESET;
+        cout << MAGENTA << "  |" << RESET << " Spesies Laut : " << WHITE   << left << setw(30) << spesies    << MAGENTA << "|\n" << RESET;
+        cout << MAGENTA << "  |" << RESET << " No. Rekening : " << YELLOW  << left << setw(30) << noRek      << MAGENTA << "|\n" << RESET;
+        cout << MAGENTA << "  |" << RESET << " Tipe Akun    : " << BOLD    << MAGENTA << left << setw(30) << "VIP [BINTANG]" << RESET << MAGENTA << "|\n" << RESET;
+        cout << MAGENTA << "  |" << RESET << " Saldo        : " << BOLD    << GREEN
+             << left << setw(24) << fixed << setprecision(2) << saldo << " Koin" << RESET << MAGENTA << "|\n" << RESET;
+        cout << MAGENTA << "  |" << RESET << " Limit Kredit : " << CYAN
+             << left << setw(24) << fixed << setprecision(2) << limitKredit << " Koin" << MAGENTA << "|\n" << RESET;
+        cout << MAGENTA << "  +-----------------------------------------------+\n" << RESET;
+    }
+
+    string getTipe()       const override { return "VIP"; }
+    double getLimitKredit()const          { return limitKredit; }
 };
 
 // ============================================================
@@ -99,7 +182,6 @@ public:
 Nasabah* daftar[MAX];
 int jumlahNasabah = 0;
 
-// Split string per kolom tanpa sstream
 string ambilKolom(const string& baris, char delim, int index) {
     int count = 0, start = 0;
     for (int i = 0; i <= (int)baris.size(); i++) {
@@ -121,13 +203,18 @@ int hitungKolom(const string& baris, char delim) {
 
 void simpanFile() {
     ofstream f("nasabah.txt");
+    if (!f.is_open()) {
+        cout << RED << "  [!] Gagal menyimpan file.\n" << RESET;
+        return;
+    }
     for (int i = 0; i < jumlahNasabah; i++) {
         Nasabah* n = daftar[i];
         f << n->getTipe() << "|" << n->getNama() << "|"
-        << n->getSpesies() << "|" << n->getNoRek() << "|"
-        << n->getSaldo();
+          << n->getSpesies() << "|" << n->getNoRek() << "|"
+          << fixed << setprecision(2) << n->getSaldo();
         if (n->getTipe() == "VIP")
-            f << "|" << dynamic_cast<NasabahVIP*>(n)->getLimitKredit();
+            f << "|" << fixed << setprecision(2)
+              << dynamic_cast<NasabahVIP*>(n)->getLimitKredit();
         f << "\n";
     }
     f.close();
@@ -139,12 +226,12 @@ void muatFile() {
     string baris;
     while (getline(f, baris) && jumlahNasabah < MAX) {
         if (baris.empty()) continue;
-        int kol       = hitungKolom(baris, '|');
-        string tipe   = ambilKolom(baris, '|', 0);
-        string nama   = ambilKolom(baris, '|', 1);
-        string spes   = ambilKolom(baris, '|', 2);
-        string noRek  = ambilKolom(baris, '|', 3);
-        double saldo  = stod(ambilKolom(baris, '|', 4));
+        int    kol   = hitungKolom(baris, '|');
+        string tipe  = ambilKolom(baris, '|', 0);
+        string nama  = ambilKolom(baris, '|', 1);
+        string spes  = ambilKolom(baris, '|', 2);
+        string noRek = ambilKolom(baris, '|', 3);
+        double saldo = stod(ambilKolom(baris, '|', 4));
 
         if (tipe == "VIP" && kol >= 6) {
             double limit = stod(ambilKolom(baris, '|', 5));
@@ -157,7 +244,7 @@ void muatFile() {
 }
 
 // ============================================================
-// UTILITY
+// UTILITY TAMPILAN
 // ============================================================
 Nasabah* cariRekening(const string& noRek) {
     for (int i = 0; i < jumlahNasabah; i++)
@@ -169,125 +256,209 @@ string generateNoRek() {
     return "OCN-" + to_string(100000 + rand() % 900000);
 }
 
-void header(const string& s) {
-    cout << "\n  =======================================================\n";
-    int sp = (55 - (int)s.size()) / 2;
-    cout << "  " << string(sp, ' ') << s << "\n";
-    cout << "  =======================================================\n";
+void clearScreen() {
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+void garis(const string& warna = CYAN) {
+    cout << warna << "  ================================================\n" << RESET;
+}
+
+void header(const string& judul) {
+    cout << "\n";
+    garis(CYAN);
+    int sp = max(0, (48 - (int)judul.size()) / 2);
+    cout << CYAN << "  " << string(sp, ' ') << BOLD << YELLOW << judul << RESET << "\n";
+    garis(CYAN);
+}
+
+void struk(const string& jenis, const Nasabah* n, double jumlah) {
+    cout << "\n";
+    cout << GREEN << "  +-----------------------------------------------+\n" << RESET;
+    cout << GREEN << "  |" << BOLD << WHITE << "          TRANSAKSI BERHASIL                   " << GREEN << "|\n" << RESET;
+    cout << GREEN << "  +-----------------------------------------------+\n" << RESET;
+    cout << GREEN << "  |" << RESET << " Jenis          : " << CYAN   << left << setw(28) << jenis         << GREEN << "|\n" << RESET;
+    cout << GREEN << "  |" << RESET << " Nama           : " << YELLOW << left << setw(28) << n->getNama()  << GREEN << "|\n" << RESET;
+    cout << GREEN << "  |" << RESET << " No. Rekening   : " << YELLOW << left << setw(28) << n->getNoRek() << GREEN << "|\n" << RESET;
+    cout << GREEN << "  |" << RESET << " Jumlah         : " << MAGENTA<< left << setw(22) << fixed << setprecision(2) << jumlah << " Koin" << GREEN << "|\n" << RESET;
+    cout << GREEN << "  |" << RESET << " Saldo Akhir    : " << BOLD << GREEN << left << setw(22) << fixed << setprecision(2) << n->getSaldo() << " Koin" << RESET << GREEN << "|\n" << RESET;
+    cout << GREEN << "  +-----------------------------------------------+\n" << RESET;
+}
+
+void tungguEnter() {
+    cout << DIM << YELLOW << "\n  Tekan Enter untuk kembali ke menu..." << RESET;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+}
+
+// ============================================================
+// FITUR-FITUR MENU
+// ============================================================
+void menuDaftarNasabah() {
+    header("DAFTARKAN NASABAH BARU");
+    if (jumlahNasabah >= MAX) {
+        cout << RED << "  [!] Database penuh. Tidak bisa mendaftar lagi.\n" << RESET;
+        return;
+    }
+
+    string nama    = inputTeks(CYAN "  Nama Nasabah       : " RESET);
+    string spesies = inputTeks(CYAN "  Jenis Spesies Laut : " RESET);
+    double saldo   = inputAngka(CYAN "  Saldo Awal (Koin)  : " RESET);
+
+    char vip;
+    cout << CYAN << "  Daftar sebagai VIP? (y/n): " << RESET;
+    cin >> vip;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    string noRek = generateNoRek();
+    while (cariRekening(noRek)) noRek = generateNoRek();
+
+    if (vip == 'y' || vip == 'Y')
+        daftar[jumlahNasabah++] = new NasabahVIP(nama, spesies, noRek, saldo);
+    else
+        daftar[jumlahNasabah++] = new Nasabah(nama, spesies, noRek, saldo);
+
+    simpanFile();
+    cout << GREEN << "\n  [OK] Nasabah berhasil didaftarkan!\n" << RESET;
+    cout << YELLOW << "  Nomor Rekening Anda: " << BOLD << noRek << RESET << "\n";
+}
+
+void menuCekSaldo() {
+    header("CEK SALDO NASABAH");
+    string nr = inputTeks(CYAN "  No. Rekening: " RESET);
+    Nasabah* n = cariRekening(nr);
+    if (n)
+        cout << GREEN << "\n  Saldo " << YELLOW << n->getNama()
+             << GREEN << " : " << BOLD << fixed << setprecision(2)
+             << n->getSaldo() << " Koin" << RESET << "\n";
+    else
+        cout << RED << "\n  [!] Rekening tidak ditemukan.\n" << RESET;
+}
+
+void menuSetor() {
+    header("SETOR SALDO");
+    string nr = inputTeks(CYAN "  No. Rekening : " RESET);
+    Nasabah* n = cariRekening(nr);
+    if (!n) { cout << RED << "\n  [!] Rekening tidak ditemukan.\n" << RESET; return; }
+
+    cout << GREEN << "  Saldo Saat Ini: " << BOLD << fixed << setprecision(2)
+         << n->getSaldo() << " Koin\n" << RESET;
+    double jml = inputAngka(CYAN "  Jumlah Setor  : " RESET);
+
+    if (n->setor(jml)) {
+        simpanFile();
+        struk("SETOR SALDO", n, jml);
+    } else {
+        cout << RED << "\n  [GAGAL] Jumlah setor harus lebih dari 0.\n" << RESET;
+    }
+}
+
+void menuTarik() {
+    header("TARIK SALDO");
+    string nr = inputTeks(CYAN "  No. Rekening : " RESET);
+    Nasabah* n = cariRekening(nr);
+    if (!n) { cout << RED << "\n  [!] Rekening tidak ditemukan.\n" << RESET; return; }
+
+    cout << GREEN << "  Saldo Saat Ini: " << BOLD << fixed << setprecision(2)
+         << n->getSaldo() << " Koin\n" << RESET;
+    double jml = inputAngka(CYAN "  Jumlah Tarik  : " RESET);
+
+    if (n->tarik(jml)) {
+        simpanFile();
+        struk("TARIK SALDO", n, jml);
+    } else {
+        cout << RED << "\n  [GAGAL] Saldo tidak mencukupi atau jumlah tidak valid.\n" << RESET;
+    }
+}
+
+void menuLaporan() {
+    header("LAPORAN KEUANGAN OCEAN BANK");
+    double total = 0;
+    int reguler = 0, vip = 0;
+    for (int i = 0; i < jumlahNasabah; i++) {
+        total += daftar[i]->getSaldo();
+        if (daftar[i]->getTipe() == "VIP") vip++;
+        else reguler++;
+    }
+    cout << CYAN  << "  Total Nasabah  : " << YELLOW << jumlahNasabah << " orang\n" << RESET;
+    cout << CYAN  << "  Nasabah Reguler: " << WHITE  << reguler << "\n" << RESET;
+    cout << CYAN  << "  Nasabah VIP    : " << MAGENTA<< vip    << "\n" << RESET;
+    cout << CYAN  << "  Total Saldo    : " << BOLD << GREEN << fixed << setprecision(2) << total << " Koin\n" << RESET;
+}
+
+void menuInfoLengkap() {
+    header("CEK DATA NASABAH LENGKAP");
+    string nr = inputTeks(CYAN "  No. Rekening: " RESET);
+    Nasabah* n = cariRekening(nr);
+    if (n)
+        n->tampilkanInfo();   // POLYMORPHISM - otomatis pilih VIP atau Reguler
+    else
+        cout << RED << "\n  [!] Rekening tidak ditemukan.\n" << RESET;
+}
+
+void menuCariNama() {
+    header("CARI NASABAH BERDASARKAN NAMA");
+    string nm = inputTeks(CYAN "  Nama (sebagian): " RESET);
+    bool ketemu = false;
+    cout << "\n";
+    for (int i = 0; i < jumlahNasabah; i++) {
+        if (daftar[i]->getNama().find(nm) != string::npos) {
+            cout << GREEN << "  [" << i+1 << "] " << YELLOW << daftar[i]->getNama()
+                 << WHITE << " | " << CYAN << daftar[i]->getNoRek()
+                 << DIM   << " (" << daftar[i]->getTipe() << ")"
+                 << RESET << "\n";
+            ketemu = true;
+        }
+    }
+    if (!ketemu) cout << RED << "  [!] Nama tidak ditemukan.\n" << RESET;
 }
 
 // ============================================================
 // MAIN
 // ============================================================
 int main() {
-    srand(time(0));
+    srand((unsigned)time(0));
     muatFile();
 
     int pilihan;
     do {
-        system("clear || cls");
-        cout << "\n           ~~~~~ WELCOME TO OCEAN BANK ~~~~~\n";
+        clearScreen();
+        cout << BOLD << CYAN << "\n         ~~ SELAMAT DATANG DI OCEAN BANK ~~\n" << RESET;
         header("MENU UTAMA");
-        cout << "  1. Input Data Nasabah Baru\n"
-            << "  2. Cek Saldo\n"
-            << "  3. Setor Saldo\n"
-            << "  4. Tarik Saldo\n"
-            << "  5. Laporan Keuangan Keseluruhan\n"
-            << "  6. Cek Data Nasabah Lengkap\n"
-            << "  7. Cari Nomor Rekening\n"
-            << "  0. Keluar & Simpan Data\n\n";
-        cout << "  Pilihan: ";
-        if (!(cin >> pilihan)) { cin.clear(); cin.ignore(1000, '\n'); pilihan = -1; continue; }
+        cout << BLUE    << "  [1] " << WHITE << "Daftarkan Nasabah Baru\n"          << RESET;
+        cout << CYAN    << "  [2] " << WHITE << "Cek Saldo\n"                       << RESET;
+        cout << GREEN   << "  [3] " << WHITE << "Setor Saldo\n"                     << RESET;
+        cout << YELLOW  << "  [4] " << WHITE << "Tarik Saldo\n"                     << RESET;
+        cout << MAGENTA << "  [5] " << WHITE << "Laporan Keuangan\n"                << RESET;
+        cout << CYAN    << "  [6] " << WHITE << "Cek Data Nasabah Lengkap\n"        << RESET;
+        cout << BLUE    << "  [7] " << WHITE << "Cari Nasabah Berdasarkan Nama\n"   << RESET;
+        cout << RED     << "  [0] " << WHITE << "Keluar & Simpan Data\n\n"          << RESET;
 
-        system("clear || cls");
+        pilihan = inputMenu(string(YELLOW) + "  Pilihan (0-7): " + RESET, 0, 7);
+        clearScreen();
 
-        if (pilihan == 1) {
-            header("INPUT DATA NASABAH BARU");
-            cin.ignore();
-            string nama, spesies; double saldo; char vip;
-            cout << "  Nama Nasabah       : "; getline(cin, nama);
-            cout << "  Jenis Spesies Laut : "; getline(cin, spesies);
-            cout << "  Saldo Awal (Koin)  : "; cin >> saldo;
-            cout << "  Daftar Akun VIP? (y/n): "; cin >> vip;
-
-            if (jumlahNasabah >= MAX) {
-                cout << "\n  [!] Bank sudah penuh!\n";
-            } else {
-                string noRek = generateNoRek();
-                while (cariRekening(noRek)) noRek = generateNoRek();
-
-                if (vip == 'y' || vip == 'Y')
-                    daftar[jumlahNasabah++] = new NasabahVIP(nama, spesies, noRek, saldo);
-                else
-                    daftar[jumlahNasabah++] = new Nasabah(nama, spesies, noRek, saldo);
-
-                simpanFile();
-                cout << "\n  [SUKSES] Data berhasil disimpan.\n";
-                cout << "  NOMOR REKENING ANDA: " << noRek << "\n";
-            }
-
-        } else if (pilihan == 2) {
-            header("CEK SALDO NASABAH");
-            cin.ignore(); string nr;
-            cout << "  Masukkan No. Rekening: "; getline(cin, nr);
-            Nasabah* n = cariRekening(nr);
-            if (n) cout << "\n  Saldo " << n->getNama() << ": " << n->getSaldo() << " Koin\n";
-            else   cout << "\n  [!] Rekening tidak ditemukan.\n";
-
-        } else if (pilihan == 3 || pilihan == 4) {
-            string aksi = (pilihan == 3) ? "SETOR" : "TARIK";
-            header(aksi + " SALDO");
-            cin.ignore(); string nr; double jml;
-            cout << "  No. Rekening  : "; getline(cin, nr);
-            cout << "  Jumlah " << aksi << "  : "; cin >> jml;
-            Nasabah* n = cariRekening(nr);
-            if (n) {
-                bool ok = (pilihan == 3) ? n->setor(jml) : n->tarik(jml);
-                if (ok) {
-                    simpanFile();
-                    cout << "\n  [BERHASIL] Saldo diperbarui.\n";
-                    cout << "  Saldo Saat Ini: " << n->getSaldo() << " Koin\n";
-                } else cout << "\n  [GAGAL] Periksa saldo atau jumlah input.\n";
-            } else cout << "\n  [!] Rekening tidak ditemukan.\n";
-
-        } else if (pilihan == 5) {
-            header("LAPORAN KEUANGAN OCEAN BANK");
-            double totalSaldo = 0;
-            for (int i = 0; i < jumlahNasabah; i++) totalSaldo += daftar[i]->getSaldo();
-            cout << "  Jumlah Total Nasabah : " << jumlahNasabah << " Nasabah\n";
-            cout << "  Total Seluruh Saldo  : " << totalSaldo << " Koin\n";
-
-        } else if (pilihan == 6) {
-            header("INFORMASI LENGKAP NASABAH");
-            cin.ignore(); string nr;
-            cout << "  Masukkan No. Rekening: "; getline(cin, nr);
-            Nasabah* n = cariRekening(nr);
-            if (n) n->tampilkanInfo();  // POLYMORPHISM
-            else   cout << "\n  [!] Rekening tidak ditemukan.\n";
-
-        } else if (pilihan == 7) {
-            header("CARI NOMOR REKENING");
-            cin.ignore(); string nm;
-            cout << "  Masukkan Nama Nasabah: "; getline(cin, nm);
-            bool ketemu = false;
-            for (int i = 0; i < jumlahNasabah; i++) {
-                if (daftar[i]->getNama().find(nm) != string::npos) {
-                    cout << "  > " << daftar[i]->getNama()
-                        << " | No Rek: " << daftar[i]->getNoRek() << "\n";
-                    ketemu = true;
-                }
-            }
-            if (!ketemu) cout << "  [!] Nama tidak ditemukan.\n";
+        switch (pilihan) {
+            case 1: menuDaftarNasabah(); break;
+            case 2: menuCekSaldo();      break;
+            case 3: menuSetor();         break;
+            case 4: menuTarik();         break;
+            case 5: menuLaporan();       break;
+            case 6: menuInfoLengkap();   break;
+            case 7: menuCariNama();      break;
+            case 0: break;
         }
 
-        if (pilihan != 0) {
-            cout << "\n  Tekan Enter untuk kembali...";
-            cin.ignore(1000, '\n'); cin.get();
-        }
+        if (pilihan != 0) tungguEnter();
 
     } while (pilihan != 0);
 
-    // DESTRUCTOR - bebaskan memori
+    simpanFile();
+    cout << GREEN << "\n  [OK] Data disimpan. Terima kasih telah menggunakan Ocean Bank!\n\n" << RESET;
+
+    // DESTRUCTOR - bebaskan memori heap
     for (int i = 0; i < jumlahNasabah; i++) delete daftar[i];
     return 0;
 }
